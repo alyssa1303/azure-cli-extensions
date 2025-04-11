@@ -2829,24 +2829,24 @@ class AKSPreviewManagedClusterContext(AKSManagedClusterContext):
         """
         return self.raw_param.get("disable_imds_restriction")
 
-    def get_encoded_custom_configuration(self) -> bytes:
-        """Obtain the value of encoded_custom_configuration and encode it to base64.
-
-        :return: str
+    def get_custom_configuration(self) -> Union[bytes, None]:
+        """Obtain the value of custom_configuration and encode it to base64.
         """
-        encoded_custom_configuration_file_path = self.raw_param.get("encoded_custom_configuration")
-        logger.debug("Custom configuration file path: ", encoded_custom_configuration_file_path)
-        if encoded_custom_configuration_file_path:
-            if not os.path.isfile(encoded_custom_configuration_file_path):
+        custom_configuration_file_path = self.raw_param.get("custom_configuration")
+        logger.debug("Custom configuration file path: %s", custom_configuration_file_path)
+        if custom_configuration_file_path:
+            if not os.path.isfile(custom_configuration_file_path):
                 raise InvalidArgumentValueError(
-                    f"{encoded_custom_configuration_file_path} is not valid file, or not accessable."
+                    f"{custom_configuration_file_path} is not valid file, or not accessable."
                 )
-            with open(encoded_custom_configuration_file_path, "rb") as file:
+            with open(custom_configuration_file_path, "rb") as file:
                 file_content = file.read()
             encoded_custom_configuration = base64.b64encode(file_content).decode("utf-8")
 
-        logger.debug("Encoded custom configuration file content: ", encoded_custom_configuration)
-        return encoded_custom_configuration
+            logger.debug("Encoded custom configuration file content: %s", encoded_custom_configuration)
+            return encoded_custom_configuration
+        return None
+
 
 # pylint: disable=too-many-public-methods
 class AKSPreviewManagedClusterCreateDecorator(AKSManagedClusterCreateDecorator):
@@ -3584,14 +3584,14 @@ class AKSPreviewManagedClusterCreateDecorator(AKSManagedClusterCreateDecorator):
             mc.network_profile.pod_link_local_access = CONST_IMDS_RESTRICTION_ENABLED
         return mc
 
-    def set_up_encoded_custom_configuration(self, mc: ManagedCluster) -> ManagedCluster:
+    def set_up_custom_configuration(self, mc: ManagedCluster) -> ManagedCluster:
         """Set up custom configuration for the ManagedCluster object.
 
         :return: the ManagedCluster object
         """
         self._ensure_mc(mc)
 
-        encoded_custom_configuration = self.context.get_encoded_custom_configuration()
+        encoded_custom_configuration = self.context.get_custom_configuration()
         if encoded_custom_configuration:
             mc.encoded_custom_configuration = encoded_custom_configuration
 
@@ -3659,8 +3659,8 @@ class AKSPreviewManagedClusterCreateDecorator(AKSManagedClusterCreateDecorator):
         mc = self.set_up_static_egress_gateway(mc)
         # set up imds restriction(a property in network profile)
         mc = self.set_up_imds_restriction(mc)
-        # set up encoded custom configuration
-        mc = self.set_up_encoded_custom_configuration(mc)
+        # set up custom configuration
+        mc = self.set_up_custom_configuration(mc)
 
         # validate the azure cli core version
         self.verify_cli_core_version()
